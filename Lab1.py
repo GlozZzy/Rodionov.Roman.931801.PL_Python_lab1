@@ -26,51 +26,47 @@ def app(environ, start_response):
             return [b'Not found argument "type"']
 
         try:
-            tz1 = received_data['tz1']
+            tz_start = received_data['tz_start']
         except KeyError:
-            tz1 = None
+            tz_start = None
 
         try:
-            tz2 = received_data['tz2']
+            tz_end = received_data['tz_end']
         except KeyError:
-            tz2 = None
+            tz_end = None
 
-        if tz1:
+        if tz_start:
             try:
-                tz1 = timezone(tz1)
+                tz_start = timezone(tz_start)
             except UnknownTimeZoneError:
                 start_response('200 OK', [('Content-Type', 'text/plain')])
-                return [b'Unknown time zone tz1']
+                return [b'Unknown time zone tz_start']
+        else:
+            tz_start = get_localzone()
 
-        if tz2:
+        if tz_end:
             try:
-                tz2 = timezone(tz2)
+                tz_end = timezone(tz_end)
             except UnknownTimeZoneError:
                 start_response('200 OK', [('Content-Type', 'text/plain')])
-                return [b'Unknown time zone tz2']
+                return [b'Unknown time zone tz_end']
+        else:
+            tz_end = get_localzone()
 
         if type_ == 'date':
-            answer = json.dumps({'date': datetime.now(tz=tz1).date().isoformat(), 'tz': str(tz1)})
+            answer = json.dumps({'date': datetime.now(tz=tz_start).date().isoformat(), 'tz': str(tz_start)})
         elif type_ == 'time':
-            answer = json.dumps({'time': datetime.now(tz=tz1).time().isoformat(), 'tz': str(tz1)})
+            answer = json.dumps({'time': datetime.now(tz=tz_start).time().isoformat(), 'tz': str(tz_start)})
         elif type_ == 'datediff':
-            try:
-                d1 = datetime.now(tz=tz1).tzinfo.localize(datetime.now())
-            except:
-                d1 = datetime.now(tzlocal())
-                tz1 = get_localzone()
-            try:
-                d2 = datetime.now(tz=tz2).tzinfo.localize(datetime.now())
-            except:
-                d2 = datetime.now(tzlocal())
-                tz2 = get_localzone()
+            d_start = datetime.now(tz=tz_start).tzinfo.localize(datetime.now())
+            d_end = datetime.now(tz=tz_end).tzinfo.localize(datetime.now())
 
             result_diff = ''
-            if d1 > d2:
-                result_diff += '-' + str(d1 - d2)
+            if d_end > d_start:
+                result_diff += '-' + str(d_end - d_start)
             else:
-                result_diff += str(d2 - d1)
-            answer = json.dumps({'diff': result_diff, 'tz1': str(tz1), 'tz2': str(tz2)})
+                result_diff += str(d_start - d_end)
+            answer = json.dumps({'diff': result_diff, 'tz_start': str(tz_start), 'tz_end': str(tz_end)})
 
         else:
             start_response('200 OK', [('Content-Type', 'text/plain')])
@@ -91,14 +87,14 @@ def app(environ, start_response):
         else:
             input_timezone = None
 
-        string = 'Time '
-        if input_timezone is None:
-            string += 'on server:\n'
+        msg = 'Time '
+        if input_timezone:
+            msg += 'in %s:\n' % input_timezone
         else:
-            string += 'in %s:\n' % input_timezone
+            msg += 'on server:\n'
 
         start_response('200 OK', [('Content-Type', 'text/plain')])
-        return [bytes(string + datetime.now(tz=input_timezone).time().isoformat() + '\nAdd needed timezone to the url\n'
+        return [bytes(msg + datetime.now(tz=input_timezone).time().isoformat() + '\nAdd needed timezone to the url\n'
                       , encoding='utf-8')]
 
 
